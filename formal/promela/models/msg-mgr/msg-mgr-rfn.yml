@@ -47,24 +47,24 @@ SIGNAL: |
 WAIT: |
   ObtainTestSyncSema( test_sync_sema[{}] );
 
-# message_queue_construct: |
-#   T_log( T_NORMAL, "Calling construct(%d,%d,%d,%d,%d)");
+message_queue_construct: |
+  T_log( T_NORMAL, "Calling construct(%d,%d,%d,%d,%d)");
 
-#   rtems_message_queue_config config;
-#   config.name = {3};
-#   config.maximum_pending_messages = MAX_PENDING_MESSAGES;
-#   config.maximum_message_size = MAX_MESSAGE_SIZE;
-#   config.storage_area = queue_buffer;
-#   config.storage_size = sizeof( queue_buffer );
-#   config.storage_free = NULL;
-#   config.attributes = RTEMS_DEFAULT_ATTRIBUTES;
+  rtems_message_queue_config config;
+  config.name = {3};
+  config.maximum_pending_messages = MAX_PENDING_MESSAGES;
+  config.maximum_message_size = MAX_MESSAGE_SIZE;
+  config.storage_area = queue_buffer;
+  config.storage_size = sizeof( queue_buffer );
+  config.storage_free = NULL;
+  config.attributes = RTEMS_DEFAULT_ATTRIBUTES;
   
-#   {5} = rtems_message_queue_construct(
-#     &config,
-#     &ctx->queue_id
-#   );
-#   T_log(T_NORMAL, "Queue id 0x%x", ctx->queue_id);
-#   T_log( T_NORMAL, "Returned 0x%x from construct", {5} );
+  {5} = rtems_message_queue_construct(
+    &config,
+    &ctx->queue_id
+  );
+  T_log(T_NORMAL, "Queue id 0x%x", ctx->queue_id);
+  T_log( T_NORMAL, "Returned 0x%x from construct", {5} );
 
 message_queue_create: |
   T_log( T_NORMAL, "Calling create(%d,%d,%d,%d,%d)");

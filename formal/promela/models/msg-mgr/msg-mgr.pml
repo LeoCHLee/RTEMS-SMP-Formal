@@ -239,24 +239,24 @@ inline message_queue_create(queue_name, msg_count, max_size, rc) {
   }
 }
 
-// inline message_queue_construct(queue_name, msg_count, max_size, rc) {
-//     atomic{
-//       //only one queue created
-//       int qid = 1;
-//       if
-//       ::  queue_name == 0 -> rc = RC_InvName;
-//       ::  max_size == 0 -> rc = RC_InvSize;
-//       ::  msg_count == 0 -> rc = RC_InvNum;
-//       ::  else -> 
-//             queueList[qid].config.count = msg_count;
-//             queueList[qid].config.maxSize = max_size;
-//             queueList[qid].queueFull = false;
-//             queueList[qid].config.name = queue_name;
-//             rc = RC_OK;
-//       fi
-//       ;
-//   }
-// }
+inline message_queue_construct(queue_name, msg_count, max_size, rc) {
+    atomic{
+      //only one queue created
+      int qid = 1;
+      if
+      ::  queue_name == 0 -> rc = RC_InvName;
+      ::  max_size == 0 -> rc = RC_InvSize;
+      ::  msg_count == 0 -> rc = RC_InvNum;
+      ::  else -> 
+            queueList[qid].config.count = msg_count;
+            queueList[qid].config.maxSize = max_size;
+            queueList[qid].queueFull = false;
+            queueList[qid].config.name = queue_name;
+            rc = RC_OK;
+      fi
+      ;
+  }
+}
 
 
 /*
@@ -391,7 +391,7 @@ int queueId;
 
 
 
-mtype = {Send,Receive,SndRcv, RcvSnd, create}; //adding construct and create
+mtype = {Send,Receive,SndRcv, RcvSnd, create, construct}; //adding construct and create
 
 
 inline chooseScenario() {
@@ -436,7 +436,7 @@ inline chooseScenario() {
   ::  scenario = SndRcv;
   ::  scenario = RcvSnd;
   //adding create and construct----------------------------------------!
-  //::  scenario = construct;
+  ::  scenario = construct;
   ::  scenario = create;
   fi
 
@@ -533,13 +533,13 @@ inline chooseScenario() {
         */
 
 //adding the create and construct blocks------------------------------!
-  // :: scenario == construct ->
-  //       msgstate[SEND_ID].doConstruct = true;
-  //       msgstate[SEND_ID].doCreate = false;
-  //       msgstate[SEND_ID].doSend = false;
-  //       msgstate[RCV1_ID].doReceive = false;
-  //       msgstate[RCV2_ID].doReceive = false;
-  //       printf("@@@ %d LOG sub-scenario message_queue_construct"); //numSends:%d\n
+  :: scenario == construct ->
+        msgstate[SEND_ID].doConstruct = true;
+        msgstate[SEND_ID].doCreate = false;
+        msgstate[SEND_ID].doSend = false;
+        msgstate[RCV1_ID].doReceive = false;
+        msgstate[RCV2_ID].doReceive = false;
+        printf("@@@ %d LOG sub-scenario message_queue_construct"); //numSends:%d\n
 
   :: scenario == create ->
         msgstate[SEND_ID].doCreate = true;
@@ -559,22 +559,22 @@ proctype Sender (byte taskid) {
   tasks[taskid].state = Ready;
   printf("@@@ %d TASK Runner\n",_pid,taskid);
   
-  // if 
-  // ::  (msgstate[taskid].doConstruct && !queueConstructed) ->
-  //     printf("@@@ %d CALL message_queue_construct %d %d %d %d %d qrc\n", _pid, 
-  //             taskid, 
-  //             QUEUE_NAME,
-  //             MAX_PENDING_MESSAGES, 
-  //             MAX_MESSAGE_SIZE, 
-  //             queueId);
-  //     message_queue_construct(QUEUE_NAME, 
-  //                           MAX_PENDING_MESSAGES, 
-  //                           MAX_MESSAGE_SIZE, 
-  //                           qrc);
-  //     printf("@@@ %d SCALAR qrc %d\n",_pid,qrc);
-  //     queueConstructed = true;
-  //     TestSyncRelease(startSema);
-  // fi
+  if 
+  ::  (msgstate[taskid].doConstruct && !queueConstructed) ->
+      printf("@@@ %d CALL message_queue_construct %d %d %d %d %d qrc\n", _pid, 
+              taskid, 
+              QUEUE_NAME,
+              MAX_PENDING_MESSAGES, 
+              MAX_MESSAGE_SIZE, 
+              queueId);
+      message_queue_construct(QUEUE_NAME, 
+                            MAX_PENDING_MESSAGES, 
+                            MAX_MESSAGE_SIZE, 
+                            qrc);
+      printf("@@@ %d SCALAR qrc %d\n",_pid,qrc);
+      queueConstructed = true;
+      TestSyncRelease(startSema);
+  fi
 
   //adding the create for sender-------------------------------------------------!
   if
