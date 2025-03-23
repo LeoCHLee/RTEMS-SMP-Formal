@@ -73,7 +73,7 @@ typedef MsgState{
   int numSends; //number of message send calls to make
   int msgSize; //size of message to send
   // Scenario related?
-  bool doCreate; // whether to create a queue
+  //bool doCreate; // whether to create a queue
   bool doConstruct; //whether to construct a queue
   bool doSend; //whether task should send
   bool doReceive; //whether task should receive
@@ -105,10 +105,6 @@ typedef MessageQueue {
   int nextTask; //top of task queue
   int lastTask; //end of task queue
   bool taskFull;
-
-  int count;
-  int maxSize;
-  int name;
 };
 
 MessageQueue queueList[MAX_MESSAGE_QUEUES]; //queueList[0] is null
@@ -219,27 +215,7 @@ inline outputDeclarations () {
 * rc - return flag
 */
 
-inline message_queue_create(queue_name, msg_count, max_size, rc) {
-    atomic{
-      //only one queue createdS
-      int qid = 1;
-      if
-      ::  queue_name == 0 -> rc = RC_InvName;
-      ::  max_size == 0 -> rc = RC_InvSize;
-      ::  msg_count == 0 -> rc = RC_InvNum;
-      ::  else -> 
-            queueList[qid].count = msg_count;
-            queueList[qid].maxSize = max_size;
-            queueList[qid].queueFull = false;
-            queueList[qid].name = queue_name;
-            queueId = qid;
-            rc = RC_OK;
-      fi
-      ;
-  }
-}
-
-// inline message_queue_construct(queue_name, msg_count, max_size, rc) {
+// inline message_queue_create(queue_name, msg_count, max_size, rc) {
 //     atomic{
 //       //only one queue created
 //       int qid = 1;
@@ -257,6 +233,25 @@ inline message_queue_create(queue_name, msg_count, max_size, rc) {
 //       ;
 //   }
 // }
+
+inline message_queue_construct(queue_name, msg_count, max_size, rc) {
+    atomic{
+      //only one queue created
+      int qid = 1;
+      if
+      ::  queue_name == 0 -> rc = RC_InvName;
+      ::  max_size == 0 -> rc = RC_InvSize;
+      ::  msg_count == 0 -> rc = RC_InvNum;
+      ::  else -> 
+            queueList[qid].config.count = msg_count;
+            queueList[qid].config.maxSize = max_size;
+            queueList[qid].queueFull = false;
+            queueList[qid].config.name = queue_name;
+            rc = RC_OK;
+      fi
+      ;
+  }
+}
 
 
 /*
@@ -283,9 +278,6 @@ inline message_queue_send(self,qid,msg,size,rc) {
           if
           ::  msg == NULL -> rc = RC_InvAddr;
           ::  size > queueList[qid].config.maxSize -> rc = RC_InvSize;
-          
-          //::  size > queueList[qid].maxSize -> rc = RC_InvSize; // added for create
-          
           ::  queueList[qid].queueFull -> rc = RC_TooMany;
           ::  else ->
               if 
@@ -364,9 +356,9 @@ inline message_queue_receive(self,qid,msg,rc) {
  */
 byte sendTarget;
 byte msize;
-bool sendAgain;
-int totalSendCount;
-int currSendCount;
+bool sendAgain
+int totalSendCount
+int currSendCount
 /*
  * Receiver Scenario
  */
@@ -385,13 +377,12 @@ int rcvSema2;
 */
 // queueCreated;
 bool queueConstructed;
-bool queueCreated;
 int queueId;
 
 
 
 
-mtype = {Send,Receive,SndRcv, RcvSnd, create}; //adding construct and create
+mtype = {Send,Receive,SndRcv, RcvSnd, construct}; //adding construct and create
 
 
 inline chooseScenario() {
@@ -405,15 +396,15 @@ inline chooseScenario() {
   rcvSema2 = 2;
   startSema = sendSema;
   //create and construct
-  msgstate[SEND_ID].doCreate = true;
-  msgstate[SEND_ID].doConstruct = false;
+  //msgstate[SEND_ID].doCreate = false;
+  msgstate[SEND_ID].doConstruct = true;
   //------------------------------------------------
   tasks[SEND_ID].state = Ready;
   tasks[RCV1_ID].state = Ready;
   tasks[RCV2_ID].state = Ready;
 
   //Queue parameters
-  queueCreated = false;
+  //queueCreated = false;
   //changing naming to construct for consistency-------------------------!
   queueConstructed = false;
   queueId = 1;
@@ -436,8 +427,8 @@ inline chooseScenario() {
   ::  scenario = SndRcv;
   ::  scenario = RcvSnd;
   //adding create and construct----------------------------------------!
-  //::  scenario = construct;
-  ::  scenario = create;
+  ::  scenario = construct;
+  //::  scenario = create;
   fi
 
   atomic{printf("@@@ %d LOG scenario ",_pid); 
@@ -533,21 +524,21 @@ inline chooseScenario() {
         */
 
 //adding the create and construct blocks------------------------------!
-  // :: scenario == construct ->
-  //       msgstate[SEND_ID].doConstruct = true;
-  //       msgstate[SEND_ID].doCreate = false;
-  //       msgstate[SEND_ID].doSend = false;
-  //       msgstate[RCV1_ID].doReceive = false;
-  //       msgstate[RCV2_ID].doReceive = false;
-  //       printf("@@@ %d LOG sub-scenario message_queue_construct"); //numSends:%d\n
-
-  :: scenario == create ->
-        msgstate[SEND_ID].doCreate = true;
-        msgstate[SEND_ID].doConstruct = false;
+  :: scenario == construct ->
+        msgstate[SEND_ID].doConstruct = true;
+        //msgstate[SEND_ID].doCreate = false;
         msgstate[SEND_ID].doSend = false;
         msgstate[RCV1_ID].doReceive = false;
         msgstate[RCV2_ID].doReceive = false;
-        printf("@@@ %d LOG sub-scenario message_queue_create"); //numSends:%d\n
+        printf("@@@ %d LOG sub-scenario message_queue_construct"); //numSends:%d\n
+
+  // :: scenario == create ->
+  //       msgstate[SEND_ID].doCreate = true;
+  //       msgstate[SEND_ID].doConstruct = false;
+  //       msgstate[SEND_ID].doSend = false;
+  //       msgstate[RCV1_ID].doReceive = false;
+  //       msgstate[RCV2_ID].doReceive = false;
+  //       printf("@@@ %d LOG sub-scenario message_queue_create"); //numSends:%d\n
 
   fi
 }
@@ -559,40 +550,40 @@ proctype Sender (byte taskid) {
   tasks[taskid].state = Ready;
   printf("@@@ %d TASK Runner\n",_pid,taskid);
   
-  // if 
-  // ::  (msgstate[taskid].doConstruct && !queueConstructed) ->
-  //     printf("@@@ %d CALL message_queue_construct %d %d %d %d %d qrc\n", _pid, 
-  //             taskid, 
-  //             QUEUE_NAME,
-  //             MAX_PENDING_MESSAGES, 
-  //             MAX_MESSAGE_SIZE, 
-  //             queueId);
-  //     message_queue_construct(QUEUE_NAME, 
-  //                           MAX_PENDING_MESSAGES, 
-  //                           MAX_MESSAGE_SIZE, 
-  //                           qrc);
-  //     printf("@@@ %d SCALAR qrc %d\n",_pid,qrc);
-  //     queueConstructed = true;
-  //     TestSyncRelease(startSema);
-  // fi
-
-  //adding the create for sender-------------------------------------------------!
-  if
-  ::  (msgstate[taskid].doCreate && !queueCreated) ->
-      printf("@@@ %d CALL message_queue_create %d %d %d %d %d qrc\n", _pid, 
+  if 
+  ::  (msgstate[taskid].doConstruct && !queueConstructed) ->
+      printf("@@@ %d CALL message_queue_construct %d %d %d %d %d qrc\n", _pid, 
               taskid, 
               QUEUE_NAME,
               MAX_PENDING_MESSAGES, 
               MAX_MESSAGE_SIZE, 
               queueId);
-      message_queue_create(QUEUE_NAME, 
+      message_queue_construct(QUEUE_NAME, 
                             MAX_PENDING_MESSAGES, 
                             MAX_MESSAGE_SIZE, 
                             qrc);
       printf("@@@ %d SCALAR qrc %d\n",_pid,qrc);
-      queueCreated = true;
+      queueConstructed = true;
       TestSyncRelease(startSema);
   fi
+
+  //adding the create for sender-------------------------------------------------!
+  // if
+  // ::  (msgstate[taskid].doCreate && !queueCreated) ->
+  //     printf("@@@ %d CALL message_queue_create %d %d %d %d %d qrc\n", _pid, 
+  //             taskid, 
+  //             QUEUE_NAME,
+  //             MAX_PENDING_MESSAGES, 
+  //             MAX_MESSAGE_SIZE, 
+  //             queueId);
+  //     message_queue_create(QUEUE_NAME, 
+  //                           MAX_PENDING_MESSAGES, 
+  //                           MAX_MESSAGE_SIZE, 
+  //                           qrc);
+  //     printf("@@@ %d SCALAR qrc %d\n",_pid,qrc);
+  //     queueCreated = true;
+  //     TestSyncRelease(startSema);
+  // fi
   
   if
   :: msgstate[taskid].doSend -> 
