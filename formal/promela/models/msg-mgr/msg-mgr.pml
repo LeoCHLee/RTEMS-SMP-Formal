@@ -109,6 +109,7 @@ typedef MessageQueue {
   int count;
   int maxSize;
   int name;
+  //int Qtype; // added so interracting functions know create or constr
 };
 
 MessageQueue queueList[MAX_MESSAGE_QUEUES]; //queueList[0] is null
@@ -232,7 +233,7 @@ inline message_queue_create(queue_name, msg_count, max_size, rc) {
             queueList[qid].maxSize = max_size;
             queueList[qid].queueFull = false;
             queueList[qid].name = queue_name;
-            queueId = qid;
+            //queueId = qid;
             rc = RC_OK;
       fi
       ;
@@ -284,7 +285,7 @@ inline message_queue_send(self,qid,msg,size,rc) {
           ::  msg == NULL -> rc = RC_InvAddr;
           ::  size > queueList[qid].config.maxSize -> rc = RC_InvSize;
           
-          //::  size > queueList[qid].maxSize -> rc = RC_InvSize; // added for create
+          ::  size > queueList[qid].maxSize -> rc = RC_InvSize; // added for create
           
           ::  queueList[qid].queueFull -> rc = RC_TooMany;
           ::  else ->
@@ -406,7 +407,7 @@ inline chooseScenario() {
   startSema = sendSema;
   //create and construct
   msgstate[SEND_ID].doCreate = true;
-  msgstate[SEND_ID].doConstruct = false;
+  msgstate[SEND_ID].doConstruct = true; //turn on or off to pick between construct or create
   //------------------------------------------------
   tasks[SEND_ID].state = Ready;
   tasks[RCV1_ID].state = Ready;
@@ -574,11 +575,8 @@ proctype Sender (byte taskid) {
       printf("@@@ %d SCALAR qrc %d\n",_pid,qrc);
       queueConstructed = true;
       TestSyncRelease(startSema);
-  fi
 
-  //adding the create for sender-------------------------------------------------!
-  if
-  ::  (msgstate[taskid].doCreate && !queueCreated) ->
+    ::  (msgstate[taskid].doCreate && !queueCreated) ->
       printf("@@@ %d CALL message_queue_create %d %d %d %d %d qrc\n", _pid, 
               taskid, 
               QUEUE_NAME,
@@ -593,6 +591,24 @@ proctype Sender (byte taskid) {
       queueCreated = true;
       TestSyncRelease(startSema);
   fi
+
+  //adding the create for sender-------------------------------------------------!
+  // if
+  // ::  (msgstate[taskid].doCreate && !queueCreated) ->
+  //     printf("@@@ %d CALL message_queue_create %d %d %d %d %d qrc\n", _pid, 
+  //             taskid, 
+  //             QUEUE_NAME,
+  //             MAX_PENDING_MESSAGES, 
+  //             MAX_MESSAGE_SIZE, 
+  //             queueId);
+  //     message_queue_create(QUEUE_NAME, 
+  //                           MAX_PENDING_MESSAGES, 
+  //                           MAX_MESSAGE_SIZE, 
+  //                           qrc);
+  //     printf("@@@ %d SCALAR qrc %d\n",_pid,qrc);
+  //     queueCreated = true;
+  //     TestSyncRelease(startSema);
+  // fi
   
   if
   :: msgstate[taskid].doSend -> 
