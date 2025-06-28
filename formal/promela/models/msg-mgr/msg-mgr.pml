@@ -65,6 +65,10 @@ inline outputDefines() {
 
 mtype{ MsgWait } ;// need to know when Blocked waiting for message
 
+bool queue_exists;
+
+
+
 typedef MsgState{
   int rcvInterval; //how many ticks to wait
   int rcvMsg; //hold value of message received, modelling receive buffer
@@ -78,6 +82,8 @@ typedef MsgState{
   bool doSend; //whether task should send
   bool doReceive; //whether task should receive
   bool doWait; //whether task should wait message
+  bool doDelete;
+  bool queue_exists = false;
 };
 
 MsgState msgstate[TASK_MAX]; // msgstate[0] models a NULL dereference
@@ -248,6 +254,8 @@ inline message_queue_construct(queue_name, msg_count, max_size, rc) {
             queueList[qid].queueFull = false;
             queueList[qid].config.name = queue_name;
             rc = RC_OK;
+            queue_exists = true;
+            
       fi
       ;
   }
@@ -337,6 +345,19 @@ inline message_queue_receive(self,qid,msg,rc) {
   }
 }
 
+inline message_queue_delete(qid, rc) {
+  atomic {
+    if
+    :: qid == 0 -> rc = RC_InvId;
+    :: !queue_exists -> rc = RC_InvId;
+    :: else ->
+        queue_exists = false;
+        rc = RC_OK;
+        printf("@@@ %d LOG Queue deleted\n", _pid);
+    fi
+  }
+}
+
 
 /*
  * Model Processes
@@ -382,7 +403,7 @@ int queueId;
 
 
 
-mtype = {Send,Receive,SndRcv, RcvSnd, construct}; //adding construct and create
+mtype = {Send,Receive,SndRcv, RcvSnd, construct, delete}; //adding construct and create
 
 
 inline chooseScenario() {
@@ -428,6 +449,7 @@ inline chooseScenario() {
   ::  scenario = RcvSnd;
   //adding create and construct----------------------------------------!
   ::  scenario = construct;
+  ::  scenario = delete;
   //::  scenario = create;
   fi
 
@@ -540,6 +562,9 @@ inline chooseScenario() {
   //       msgstate[RCV2_ID].doReceive = false;
   //       printf("@@@ %d LOG sub-scenario message_queue_create"); //numSends:%d\n
 
+     :: scenario == delete ->
+           msgstate[SEND_ID].doDelete = true;
+           printf("@@@ %d LOG sub-scenario message_queue_delete"); //numSends:%d\n
   fi
 }
 
@@ -565,6 +590,14 @@ proctype Sender (byte taskid) {
       printf("@@@ %d SCALAR qrc %d\n",_pid,qrc);
       queueConstructed = true;
       TestSyncRelease(startSema);
+  fi
+
+  if
+  :: msgstate[taskid].doDelete ->
+      printf("@@@ %d CALL message_queue_delete %d qrc\n", _pid, queueId);
+      message_queue_delete(queueId, qrc);
+      printf("@@@ %d SCALAR qrc %d\n", _pid, qrc);
+  :: else -> skip;
   fi
 
   //adding the create for sender-------------------------------------------------!
@@ -611,6 +644,8 @@ proctype Sender (byte taskid) {
       }
   :: else -> skip;
   fi
+
+
 
 
   //adjust semaphore behaviour for RcvSnd as Receive1 starts
