@@ -347,6 +347,7 @@ inline message_queue_receive(self,qid,msg,rc) {
 
 inline message_queue_delete(qid, rc) {
   atomic {
+    printf("delete entered")
     if
     :: qid == 0 -> rc = RC_InvId;
     :: !queue_exists -> rc = RC_InvId;
@@ -419,6 +420,7 @@ inline chooseScenario() {
   //create and construct
   //msgstate[SEND_ID].doCreate = false;
   msgstate[SEND_ID].doConstruct = true;
+  msgstate[SEND_ID].doDelete = true;
   //------------------------------------------------
   tasks[SEND_ID].state = Ready;
   tasks[RCV1_ID].state = Ready;
@@ -441,7 +443,7 @@ inline chooseScenario() {
   msgstate[SEND_ID].msgSize = MAX_MESSAGE_SIZE;
 
 
-  //select scenario
+  // select scenario
   if
   ::  scenario = Send;
   ::  scenario = Receive;
@@ -452,6 +454,8 @@ inline chooseScenario() {
   ::  scenario = delete;
   //::  scenario = create;
   fi
+
+ 
 
   atomic{printf("@@@ %d LOG scenario ",_pid); 
   printm(scenario); 
@@ -564,6 +568,9 @@ inline chooseScenario() {
 
      :: scenario == delete ->
            msgstate[SEND_ID].doDelete = true;
+           msgstate[SEND_ID].doSend = false;
+          msgstate[RCV1_ID].doReceive = false;
+          msgstate[RCV2_ID].doReceive = false;
            printf("@@@ %d LOG sub-scenario message_queue_delete"); //numSends:%d\n
   fi
 }
