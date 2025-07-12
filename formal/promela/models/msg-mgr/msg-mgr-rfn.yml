@@ -106,6 +106,13 @@ message_queue_receive: |
   );
   T_log( T_NORMAL, "Returned 0x%x from receive", {4} );
 
+message_queue_delete:
+  T_log(T_NORMAL, "Calling delete(0x%x)", ctx->queue_id);
+
+  qrc = rtems_message_queue_delete(ctx->queue_id);
+
+  T_log(T_NORMAL, "Returned 0x%x from delete", qrc);
+
 sendrc:
   T_rsc( sendrc, {0} );
 
