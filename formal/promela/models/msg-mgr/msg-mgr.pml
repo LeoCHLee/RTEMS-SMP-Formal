@@ -282,6 +282,7 @@ inline message_queue_send(self,qid,msg,size,rc) {
       int queuedTask = queueList[qid].waitingTasks[queueList[qid].nextTask];
       if
       ::  qid == 0 -> rc = RC_InvId;
+      ::  !queue_exists -> rc = RC_InvId;
       ::  else ->
           if
           ::  msg == NULL -> rc = RC_InvAddr;
@@ -313,6 +314,7 @@ inline message_queue_receive(self,qid,msg,rc) {
   atomic{
     if
     :: qid == 0 -> rc = RC_InvId;
+    :: !queue_exists -> rc = RC_InvId;
     //:: msg == 0 -> rc = RC_InvAddr
     //:: size >= config.maxSize -> RC_InvSize
     :: else -> 
