@@ -349,7 +349,6 @@ inline message_queue_receive(self,qid,msg,rc) {
 
 inline message_queue_delete(qid, rc) {
   atomic {
-    printf("delete entered")
     if
     :: qid == 0 -> rc = RC_InvId;
     :: !queue_exists -> rc = RC_InvId;
