@@ -66,6 +66,7 @@ inline outputDefines() {
 mtype{ MsgWait } ;// need to know when Blocked waiting for message
 
 bool queue_exists;
+int pendingMsgs;
 
 
 
@@ -76,7 +77,6 @@ typedef MsgState{
   int targetQueue; //queue id for task to interact with
   int numSends; //number of message send calls to make
   int msgSize; //size of message to send
-  // Scenario related?
   //bool doCreate; // whether to create a queue
   bool doConstruct; //whether to construct a queue
   bool doSend; //whether task should send
@@ -84,6 +84,7 @@ typedef MsgState{
   bool doWait; //whether task should wait message
   bool doDelete;
   bool queue_exists = false;
+  bool doGetPending;
 };
 
 MsgState msgstate[TASK_MAX]; // msgstate[0] models a NULL dereference
@@ -360,6 +361,21 @@ inline message_queue_delete(qid, rc) {
   }
 }
 
+inline message_queue_get_number_pending(qid, pending, rc) {
+  atomic {
+    if
+    :: qid == 0 -> 
+        rc = RC_InvId;
+    :: !queue_exists ->
+        rc = RC_InvId;
+    :: else ->
+        pending = queue.pendingMsgs;
+        rc = RC_OK;
+        printf("@@@ %d LOG Pending Messages = %d\n", _pid, pending);
+    fi
+  }
+}
+
 
 /*
  * Model Processes
@@ -405,7 +421,7 @@ int queueId;
 
 
 
-mtype = {Send,Receive,SndRcv, RcvSnd, construct, delete}; //adding construct and create
+mtype = {Send,Receive,SndRcv, RcvSnd, construct, delete, getpending}; //adding construct and create
 
 
 inline chooseScenario() {
@@ -422,6 +438,7 @@ inline chooseScenario() {
   //msgstate[SEND_ID].doCreate = false;
   msgstate[SEND_ID].doConstruct = true;
   msgstate[SEND_ID].doDelete = true;
+  msgstate[SEND_ID].doGetPending = true;
   //------------------------------------------------
   tasks[SEND_ID].state = Ready;
   tasks[RCV1_ID].state = Ready;
@@ -450,9 +467,9 @@ inline chooseScenario() {
   ::  scenario = Receive;
   ::  scenario = SndRcv;
   ::  scenario = RcvSnd;
-  //adding create and construct----------------------------------------!
   ::  scenario = construct;
   ::  scenario = delete;
+  ::  scenario = getpending;
   //::  scenario = create;
   fi
 
@@ -570,9 +587,15 @@ inline chooseScenario() {
      :: scenario == delete ->
            msgstate[SEND_ID].doDelete = true;
            msgstate[SEND_ID].doSend = false;
-          msgstate[RCV1_ID].doReceive = false;
-          msgstate[RCV2_ID].doReceive = false;
+           msgstate[RCV1_ID].doReceive = false;
+           msgstate[RCV2_ID].doReceive = false;
            printf("@@@ %d LOG sub-scenario message_queue_delete"); //numSends:%d\n
+
+     :: scenario == getpending ->
+           msgstate[SEND_ID].doSend = false;
+           msgstate[RCV1_ID].doReceive = false;
+           msgstate[RCV2_ID].doReceive = false;
+           msgstate[SEND_ID].doGetPending = true;      
   fi
 }
 

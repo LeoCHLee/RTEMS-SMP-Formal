@@ -113,6 +113,14 @@ message_queue_delete:
 
   T_log(T_NORMAL, "Returned 0x%x from delete", qrc);
 
+message_queue_get_number_pending:
+  T_log(T_NORMAL, "Calling get_number_pending(0x%x)", ctx->queue_id);
+  qrc = rtems_message_queue_get_number_pending(ctx->queue_id, &pending);
+  T_log(T_NORMAL, "Returned 0x%x with %d pending", qrc, pending);
+
+getpendingrc:
+  T_rsc(qrc, {0});
+
 sendrc:
   T_rsc( sendrc, {0} );
 
