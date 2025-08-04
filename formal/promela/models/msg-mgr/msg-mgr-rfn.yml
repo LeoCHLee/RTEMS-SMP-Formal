@@ -113,6 +113,11 @@ message_queue_delete:
 
   T_log(T_NORMAL, "Returned 0x%x from delete", qrc);
 
+message_queue_flush: |
+  T_log(T_NORMAL, "Calling flush(0x%x)", ctx->queue_id);
+  qrc = rtems_message_queue_flush(ctx->queue_id);
+  T_log(T_NORMAL, "Returned 0x%x from flush", qrc);
+
 sendrc:
   T_rsc( sendrc, {0} );
 

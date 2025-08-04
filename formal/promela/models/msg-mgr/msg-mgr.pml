@@ -84,6 +84,7 @@ typedef MsgState{
   bool doWait; //whether task should wait message
   bool doDelete;
   bool queue_exists = false;
+  bool doFlush;
 };
 
 MsgState msgstate[TASK_MAX]; // msgstate[0] models a NULL dereference
@@ -261,6 +262,21 @@ inline message_queue_construct(queue_name, msg_count, max_size, rc) {
   }
 }
 
+inline message_queue_flush(qid, rc) {
+  atomic {
+    if
+    :: qid == 0 -> rc = RC_InvId;
+    :: !queue_exists -> rc = RC_InvId;
+    :: else ->
+        queueList[qid].head = 0;
+        queueList[qid].tail = 0;
+        queueList[qid].queueFull = false;
+        rc = RC_OK;
+        printf("@@@ %d LOG Queue flushed\n", _pid);
+    fi
+  }
+}
+
 
 /*
 * message_queue_send
@@ -405,7 +421,7 @@ int queueId;
 
 
 
-mtype = {Send,Receive,SndRcv, RcvSnd, construct, delete}; //adding construct and create
+mtype = {Send,Receive,SndRcv, RcvSnd, construct, delete, flush}; //adding construct and create
 
 
 inline chooseScenario() {
@@ -422,6 +438,7 @@ inline chooseScenario() {
   //msgstate[SEND_ID].doCreate = false;
   msgstate[SEND_ID].doConstruct = true;
   msgstate[SEND_ID].doDelete = true;
+  msgstate[SEND_ID].doFlush = true;
   //------------------------------------------------
   tasks[SEND_ID].state = Ready;
   tasks[RCV1_ID].state = Ready;
@@ -453,6 +470,7 @@ inline chooseScenario() {
   //adding create and construct----------------------------------------!
   ::  scenario = construct;
   ::  scenario = delete;
+  ::  scenario = flush;
   //::  scenario = create;
   fi
 
@@ -570,9 +588,16 @@ inline chooseScenario() {
      :: scenario == delete ->
            msgstate[SEND_ID].doDelete = true;
            msgstate[SEND_ID].doSend = false;
-          msgstate[RCV1_ID].doReceive = false;
-          msgstate[RCV2_ID].doReceive = false;
+           msgstate[RCV1_ID].doReceive = false;
+           msgstate[RCV2_ID].doReceive = false;
            printf("@@@ %d LOG sub-scenario message_queue_delete"); //numSends:%d\n
+
+     :: scenario == flush ->
+           msgstate[SEND_ID].doFlush = true;
+           msgstate[SEND_ID].doSend = false;
+           msgstate[RCV1_ID].doReceive = false;
+           msgstate[RCV2_ID].doReceive = false;
+           printf("@@@ %d LOG sub-scenario message_queue_flush\n", _pid);
   fi
 }
 
@@ -605,6 +630,14 @@ proctype Sender (byte taskid) {
       printf("@@@ %d CALL message_queue_delete %d qrc\n", _pid, queueId);
       message_queue_delete(queueId, qrc);
       printf("@@@ %d SCALAR qrc %d\n", _pid, qrc);
+  :: else -> skip;
+  fi
+
+  if
+  :: msgstate[taskid].doFlush ->
+    printf("@@@ %d CALL message_queue_flush %d qrc\n", _pid, queueId);
+    message_queue_flush(queueId, qrc);
+    printf("@@@ %d SCALAR qrc %d\n", _pid, qrc);
   :: else -> skip;
   fi
 
