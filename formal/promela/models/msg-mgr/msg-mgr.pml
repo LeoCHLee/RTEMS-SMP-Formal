@@ -66,6 +66,7 @@ inline outputDefines() {
 mtype{ MsgWait } ;// need to know when Blocked waiting for message
 
 bool queue_exists;
+bool queue_empty;
 
 
 
@@ -267,9 +268,8 @@ inline message_queue_flush(qid, rc) {
     if
     :: qid == 0 -> rc = RC_InvId;
     :: !queue_exists -> rc = RC_InvId;
+    :: queue_empty -> rc = RC_Unsat;
     :: else ->
-        queueList[qid].head = 0;
-        queueList[qid].tail = 0;
         queueList[qid].queueFull = false;
         rc = RC_OK;
         printf("@@@ %d LOG Queue flushed\n", _pid);
